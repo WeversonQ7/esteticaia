@@ -1,25 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/server/client';
-import { criarAgendamentoSchema, confirmarAgendamentoSchema } from '@/schemas';
+import { criarAgendamentoSchema } from '@/schemas';
 import { logger } from '@/lib/telemetry';
-import { AppError } from '@/types';
 
-// ============================================
-// LISTAR AGENDAMENTOS
-// ============================================
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const supabase = await createSupabaseServerClient();
 
-    // Verificar sessão
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    const clinicaId = session.user.user_metadata.clinica_id;
+    const { data: perfil } = await supabase
+      .from('profiles')
+      .select('clinica_id')
+      .eq('id', user.id)
+      .single();
+
+    let clinicaId = perfil?.clinica_id;
+
+    if (!clinicaId) {
+      clinicaId = user.user_metadata?.clinica_id;
+    }
+
+    if (!clinicaId) {
+      const { data: primeiraClinica } = await supabase
+        .from('clinica')
+        .select('id')
+        .limit(1)
+        .single();
+      clinicaId = primeiraClinica?.id;
+    }
+
+    logger.info('Agendamentos GET', { clinicaId, userId: user.id });
+
     const dataInicio = searchParams.get('dataInicio');
     const dataFim = searchParams.get('dataFim');
     const status = searchParams.get('status');
@@ -27,22 +44,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     let query = supabase
       .from('agendamento')
-      .select(`
-        *,
-        cliente:cliente_id (id, nome, telefone),
-        profissional:profissional_id (id, nome),
-        servico:servico_id (id, nome, duracao_minutos, preco, cor)
-      `)
-      .eq('clinica_id', clinicaId)
-      .order('data_hora', { ascending: true });
+      .select('*')
+      .order('data', { ascending: true });
 
-    if (dataInicio) query = query.gte('data_hora', dataInicio);
-    if (dataFim) query = query.lte('data_hora', dataFim);
+    if (clinicaId) query = query.eq('clinica_id', clinicaId);
+    if (dataInicio) query = query.gte('data', dataInicio);
+    if (dataFim) query = query.lte('data', dataFim);
     if (status) query = query.eq('status', status);
     if (profissionalId) query = query.eq('profissional_id', profissionalId);
 
     const { data, error } = await query;
-
     if (error) throw error;
 
     return NextResponse.json({ success: true, data });
@@ -56,37 +67,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-// ============================================
-// CRIAR AGENDAMENTO
-// ============================================
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const supabase = await createSupabaseServerClient();
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
     const body = await request.json();
     const validado = criarAgendamentoSchema.parse(body);
-
-    // Verificar conflitos
-    const { data: conflitos } = await supabase
-      .from('agendamento')
-      .select('id')
-      .eq('clinica_id', validado.clinicaId)
-      .eq('status', 'confirmado')
-      .eq('profissional_id', validado.profissionalId)
-      .lte('data_hora', new Date(new Date(validado.dataHora).getTime() + validado.duracaoMinutos * 60000).toISOString())
-      .gte('data_hora', new Date(new Date(validado.dataHora).getTime() - validado.duracaoMinutos * 60000).toISOString());
-
-    if (conflitos && conflitos.length > 0) {
-      return NextResponse.json(
-        { success: false, error: { code: 'CONFLITO_HORARIO', message: 'Horário indisponível para este profissional' } },
-        { status: 409 }
-      );
-    }
 
     const { data, error } = await supabase
       .from('agendamento')
@@ -96,7 +87,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         cliente_id: validado.clienteId,
         profissional_id: validado.profissionalId,
         servico_id: validado.servicoId,
-        data_hora: validado.dataHora,
+        data: validado.dataHora,
+        hora_inicio: validado.dataHora,
         duracao_minutos: validado.duracaoMinutos,
         observacoes: validado.observacoes,
         origem: validado.origem,
@@ -106,7 +98,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (error) throw error;
 
-    logger.info('Agendamento criado', { agendamentoId: data.id, clinicaId: validado.clinicaId });
+    logger.info('Agendamento criado', { agendamentoId: data.id });
 
     return NextResponse.json({ success: true, data }, { status: 201 });
 

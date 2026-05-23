@@ -8,7 +8,8 @@ import { ptBR } from 'date-fns/locale';
 
 interface Agendamento {
   id: string;
-  data_hora: string;
+  data: string;
+  hora_inicio: string;
   status: string;
   cliente: { nome: string } | null;
   profissional: { nome: string } | null;
@@ -50,14 +51,12 @@ export default function AgendaPage() {
   }
 
   const statusMap = {
-    pendente: { label: 'Pendente', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-    confirmado: { label: 'Confirmado', className: 'bg-blue-50 text-blue-700 border-blue-200' },
-    concluido: { label: 'Concluído', className: 'bg-green-50 text-green-700 border-green-200' },
-    cancelado: { label: 'Cancelado', className: 'bg-red-50 text-red-700 border-red-200' },
-    nao_compareceu: { label: 'Não veio', className: 'bg-gray-50 text-gray-700 border-gray-200' },
+    PENDENTE: { label: 'Pendente', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+    CONFIRMADO: { label: 'Confirmado', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+    CONCLUIDO: { label: 'Concluído', className: 'bg-green-50 text-green-700 border-green-200' },
+    CANCELADO: { label: 'Cancelado', className: 'bg-red-50 text-red-700 border-red-200' },
+    NAO_COMPARECEU: { label: 'Não veio', className: 'bg-gray-50 text-gray-700 border-gray-200' },
   };
-
-  const horarios = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
 
   return (
     <div className="space-y-6">
@@ -143,7 +142,7 @@ export default function AgendaPage() {
         ))}
       </div>
 
-      {/* Timeline do Dia */}
+      {/* Lista do Dia */}
       <div className="rounded-xl border border-border bg-card shadow-sm">
         <div className="p-4 border-b border-border">
           <h3 className="font-semibold">
@@ -164,21 +163,21 @@ export default function AgendaPage() {
             </div>
           ) : (
             agendamentos.map((ag) => {
-              const status = statusMap[ag.status as keyof typeof statusMap] || statusMap.pendente;
-              const hora = new Date(ag.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+              const status = statusMap[ag.status as keyof typeof statusMap] || statusMap.PENDENTE;
+              const hora = ag.hora_inicio ? ag.hora_inicio.slice(0, 5) : '--:--';
 
               return (
                 <div key={ag.id} className="p-4 flex items-center gap-4 hover:bg-accent/50 transition-colors">
                   <div className="text-sm font-medium w-16 text-center">
                     {hora}
                   </div>
-                  <div 
+                  <div
                     className="w-1 h-12 rounded-full"
                     style={{ backgroundColor: ag.servico?.cor || '#3b82f6' }}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-sm">{ag.cliente?.nome}</p>
+                      <p className="font-medium text-sm">{ag.cliente?.nome ?? 'Cliente'}</p>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${status.className}`}>
                         {status.label}
                       </span>
@@ -186,13 +185,15 @@ export default function AgendaPage() {
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <ScissorsIcon className="h-3 w-3" />
-                        {ag.servico?.nome}
+                        {ag.servico?.nome ?? 'Serviço'}
                       </span>
                       <span className="flex items-center gap-1">
                         <User className="h-3 w-3" />
-                        {ag.profissional?.nome || 'Não atribuído'}
+                        {ag.profissional?.nome ?? 'Não atribuído'}
                       </span>
-                      <span>{ag.servico?.duracao_minutos}min</span>
+                      {ag.servico?.duracao_minutos && (
+                        <span>{ag.servico.duracao_minutos}min</span>
+                      )}
                     </div>
                   </div>
                 </div>

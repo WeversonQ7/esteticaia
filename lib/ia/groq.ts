@@ -6,7 +6,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 if (!GROQ_API_KEY) {
-  throw new Error('GROQ_API_KEY não configurada');
+  console.warn('GROQ_API_KEY não configurada - funcionalidades de IA desativadas');
 }
 
 const respostaIASchema = z.object({
@@ -68,6 +68,16 @@ export async function processarMensagemComIA(
   return withSpan('ia.processar_mensagem', async (span) => {
     span.setAttribute('mensagem.tamanho', mensagem.length);
     span.setAttribute('agente.nome', config.nomeAgente);
+
+    if (!GROQ_API_KEY) {
+      return {
+        tipo: 'duvida',
+        entidades: {},
+        confianca: 0.5,
+        respostaSugerida: 'Funcionalidade de IA temporariamente indisponível. Por favor, entre em contato com o suporte.',
+        acaoRequerida: undefined,
+      };
+    }
 
     try {
       const messages = [
@@ -144,6 +154,13 @@ export async function gerarPreviewResposta(
   config: AgenteConfig
 ): Promise<{ resposta: string; pensamento: string }> {
   return withSpan('ia.preview', async (span) => {
+    if (!GROQ_API_KEY) {
+      return {
+        resposta: 'Funcionalidade de IA temporariamente indisponível.',
+        pensamento: 'Chave GROQ não configurada',
+      };
+    }
+
     const response = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
@@ -155,7 +172,9 @@ export async function gerarPreviewResposta(
         messages: [
           {
             role: 'system',
-            content: `${construirSystemPrompt(config)}\n\nIMPORTANTE: Mostre seu raciocínio passo a passo antes da resposta final, separado por \"---PENSAMENTO---\" e \"---RESPOSTA---\".`,
+            content: `${construirSystemPrompt(config)}
+
+IMPORTANTE: Mostre seu raciocínio passo a passo antes da resposta final, separado por "---PENSAMENTO---" e "---RESPOSTA---".`,
           },
           { role: 'user', content: mensagem },
         ],

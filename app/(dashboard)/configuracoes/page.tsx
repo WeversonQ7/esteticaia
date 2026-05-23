@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { gerarPreviewResposta } from '@/lib/ia/groq';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
 
 interface MensagemPreview {
@@ -40,27 +39,36 @@ export default function ConfiguracoesPage() {
     setCarregando(true);
 
     try {
-      const { resposta, pensamento } = await gerarPreviewResposta(input, {
-        id: 'preview',
-        clinicaId: 'preview',
-        unidadeId: null,
-        nomeAgente: config.nomeAgente,
-        saudacao: config.saudacao,
-        horarioAtendimento: { inicio: '08:00', fim: '20:00', dias: ['seg', 'ter', 'qua', 'qui', 'sex'] },
-        servicosAutomaticos: config.servicosAutomaticos,
-        confirmacaoAutomatica: config.confirmacaoAutomatica,
-        tempoLembrete: config.tempoLembrete,
-        tomVoz: config.tomVoz,
-        instrucoesPersonalizadas: config.instrucoesPersonalizadas,
-        evolutionInstance: null,
-        status: 'ativo',
+      const response = await fetch('/api/v1/ia/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mensagem: input,
+          config: {
+            id: 'preview',
+            clinicaId: 'preview',
+            unidadeId: null,
+            nomeAgente: config.nomeAgente,
+            saudacao: config.saudacao,
+            horarioAtendimento: { inicio: '08:00', fim: '20:00', dias: ['seg', 'ter', 'qua', 'qui', 'sex'] },
+            servicosAutomaticos: config.servicosAutomaticos,
+            confirmacaoAutomatica: config.confirmacaoAutomatica,
+            tempoLembrete: config.tempoLembrete,
+            tomVoz: config.tomVoz,
+            instrucoesPersonalizadas: config.instrucoesPersonalizadas,
+            evolutionInstance: null,
+            status: 'ativo',
+          },
+        }),
       });
+
+      const data = await response.json();
 
       const assistantMsg: MensagemPreview = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: resposta,
-        pensamento,
+        content: data.data?.resposta || 'Sem resposta',
+        pensamento: data.data?.pensamento,
       };
 
       setMensagens((prev) => [...prev, assistantMsg]);
@@ -90,7 +98,6 @@ export default function ConfiguracoesPage() {
         <div className="space-y-6">
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <h3 className="text-lg font-semibold mb-4">Identidade do Agente</h3>
-
             <div className="space-y-4">
               <div>
                 <label htmlFor="nomeAgente" className="block text-sm font-medium mb-1.5">
@@ -104,7 +111,6 @@ export default function ConfiguracoesPage() {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
-
               <div>
                 <label htmlFor="saudacao" className="block text-sm font-medium mb-1.5">
                   Saudação Inicial
@@ -117,7 +123,6 @@ export default function ConfiguracoesPage() {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                 />
               </div>
-
               <div>
                 <label htmlFor="tomVoz" className="block text-sm font-medium mb-1.5">
                   Tom de Voz
@@ -138,7 +143,6 @@ export default function ConfiguracoesPage() {
 
           <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
             <h3 className="text-lg font-semibold mb-4">Comportamento</h3>
-
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -147,16 +151,11 @@ export default function ConfiguracoesPage() {
                 </div>
                 <button
                   onClick={() => setConfig({ ...config, servicosAutomaticos: !config.servicosAutomaticos })}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    config.servicosAutomaticos ? 'bg-primary' : 'bg-muted'
-                  }`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${config.servicosAutomaticos ? 'bg-primary' : 'bg-muted'}`}
                 >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    config.servicosAutomaticos ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config.servicosAutomaticos ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
-
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sm">Confirmação por WhatsApp</p>
@@ -164,16 +163,11 @@ export default function ConfiguracoesPage() {
                 </div>
                 <button
                   onClick={() => setConfig({ ...config, confirmacaoAutomatica: !config.confirmacaoAutomatica })}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    config.confirmacaoAutomatica ? 'bg-primary' : 'bg-muted'
-                  }`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${config.confirmacaoAutomatica ? 'bg-primary' : 'bg-muted'}`}
                 >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    config.confirmacaoAutomatica ? 'translate-x-6' : 'translate-x-1'
-                  }`} />
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config.confirmacaoAutomatica ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
               </div>
-
               <div>
                 <label htmlFor="tempoLembrete" className="block text-sm font-medium mb-1.5">
                   Tempo do Lembrete (minutos antes)
@@ -212,17 +206,12 @@ export default function ConfiguracoesPage() {
                 <p className="text-xs mt-1">Ex: "Quero agendar para terça às 14h"</p>
               </div>
             )}
-
             {mensagens.map((msg) => (
               <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
-                  msg.role === 'user' ? 'bg-secondary' : 'bg-primary/10'
-                }`}>
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-secondary' : 'bg-primary/10'}`}>
                   {msg.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4 text-primary" />}
                 </div>
-                <div className={`max-w-[80%] rounded-lg p-3 text-sm ${
-                  msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                }`}>
+                <div className={`max-w-[80%] rounded-lg p-3 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                   {msg.pensamento && (
                     <details className="mt-2 text-xs opacity-70">
@@ -233,7 +222,6 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
             ))}
-
             {carregando && (
               <div className="flex gap-3">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">

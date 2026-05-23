@@ -10,20 +10,30 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createSupabaseServerClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user }, error } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (error || !user) {
     redirect('/login');
   }
 
-  const clinicaId = session.user.user_metadata.clinica_id;
+  // Tenta metadados, depois busca do perfil
+  let clinicaId = user.user_metadata?.clinica_id;
+
+  if (!clinicaId) {
+    const { data: perfil } = await supabase
+      .from('profiles')
+      .select('clinica_id')
+      .eq('id', user.id)
+      .single();
+    clinicaId = perfil?.clinica_id;
+  }
 
   return (
     <RealtimeProvider clinicaId={clinicaId}>
       <div className="min-h-screen bg-background flex">
-        <Sidebar user={session.user} />
+        <Sidebar user={user} />
         <div className="flex-1 flex flex-col lg:pl-72">
-          <Header user={session.user} />
+          <Header user={user} />
           <main className="flex-1 p-4 lg:p-8 overflow-auto">
             {children}
           </main>
