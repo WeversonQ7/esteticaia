@@ -54,12 +54,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       (row.valor as number).toFixed(2).replace('.', ','),
       row.forma_pagamento || '-',
       row.parcelas,
-      `"${(row.descricao || '').replace(/"/g, '""')}"`,
+      `"${String(row.descricao || '').replace(/"/g, '""')}"`,
       row.status,
       (row.usuario as { nome: string } | null)?.nome || '-',
     ]);
 
-    const csv = [headers.join(';'), ...rows.map((r: string[]) => r.join(';'))].join('\n');
+    const csv = [headers.join(';'), ...(rows as string[][]).map((r) => r.join(';'))].join('\n');
     const bom = '\uFEFF'; // UTF-8 BOM para Excel
 
     logger.info('CSV exportado', { registros: data.length, clinicaId });

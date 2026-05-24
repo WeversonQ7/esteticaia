@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isDuplicado, checkRateLimit } from '@/lib/redis/client';
 import { logger, webhookLatencyHistogram } from '@/lib/telemetry';
-import { createSupabaseServiceClient } from '@/lib/server/client';
+import { createSupabaseServerClient } from '@/lib/server/client';
 import { extrairMensagemMeta, type MetaWebhookPayload } from '@/lib/meta/whatsapp';
 
 const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
@@ -42,19 +42,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const dentroDoLimite = await checkRateLimit(telefone);
 
-    const supabase = createSupabaseServiceClient();
-    const { error: queueError } = await supabase.rpc('enqueue_message', {
-      queue_name: 'whatsapp-messages',
-      payload: {
-        requestId,
-        messageId,
-        telefone,
-        conteudo: conteudo.substring(0, 4000),
-        tipo,
-        timestamp: new Date().toISOString(),
-        rateLimited: !dentroDoLimite,
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+
+    const { error: queueError } = await supabase
+      .from('whatsapp_queue')
+      .insert({
+        queue_name: 'whatsapp-messages',
+        payload: {
+          requestId,
+          messageId,
+          telefone,
+          conteudo: conteudo.substring(0, 4000),
+          tipo,
+          timestamp: new Date().toISOString(),
+          rateLimited: !dentroDoLimite,
+        },
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      });
 
     if (queueError) {
       logger.error('Falha ao enfileirar mensagem', queueError, { requestId });

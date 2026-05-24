@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import type { Database } from '@/types/supabase';
 
 export function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,7 +10,7 @@ export function getSupabaseAdmin() {
     throw new Error('Variáveis de ambiente Supabase não configuradas');
   }
 
-  return createClient<Database>(url, key, {
+  return createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
@@ -25,10 +24,10 @@ export async function getSupabaseServer() {
     throw new Error('Variáveis de ambiente Supabase não configuradas');
   }
 
-  return createServerClient<Database>(url, key, {
+  return createServerClient(url, key, {
     cookies: {
       getAll: () => cookieStore.getAll(),
-      setAll: (cookiesToSet) => {
+      setAll: (cookiesToSet: { name: string; value: string; options?: any }[]) => {
         cookiesToSet.forEach(({ name, value, options }) => {
           cookieStore.set(name, value, options);
         });
@@ -45,5 +44,5 @@ export function getSupabaseClient() {
     throw new Error('Variáveis de ambiente Supabase não configuradas');
   }
 
-  return createClient<Database>(url, key);
+  return createClient(url, key);
 }

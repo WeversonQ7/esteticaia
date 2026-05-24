@@ -46,7 +46,7 @@ export function RealtimeProvider({
           table: 'agendamento',
           filter: `clinica_id=eq.${clinicaId}`,
         },
-        (payload) => {
+        () => {
           setMetrics((prev) => ({
             ...prev,
             atendimentosHoje: prev.atendimentosHoje + 1,

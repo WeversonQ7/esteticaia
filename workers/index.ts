@@ -44,7 +44,7 @@ async function processarMensagem(
       }
 
       // Buscar ou criar cliente
-      const { data: cliente, error: clienteError } = await supabase
+      const { data: cliente } = await supabase
         .from('cliente')
         .select('id, clinica_id, nome')
         .eq('telefone', msg.telefone)
@@ -123,7 +123,7 @@ async function processarMensagem(
           resposta = await handleAgendamento(supabase, intencao, clienteId, clinicaId, config);
           break;
         case 'caixa':
-          resposta = await handleCaixa(supabase, intencao, clienteId, clinicaId);
+          resposta = await handleCaixa(intencao, clienteId, clinicaId);
           break;
         case 'consulta':
           resposta = await handleConsulta(supabase, intencao, clienteId, clinicaId);
@@ -237,19 +237,18 @@ async function handleAgendamento(
 }
 
 async function handleCaixa(
-  supabase: ReturnType<typeof createSupabaseServiceClient>,
-  intencao: IntencaoIA,
-  clienteId: string,
-  clinicaId: string
+  _intencao: IntencaoIA,
+  _clienteId: string,
+  _clinicaId: string
 ): Promise<string> {
   return 'Para operações de caixa, acesse o painel administrativo ou fale com a recepcionista. Posso ajudar com agendamentos ou informações sobre nossos serviços.';
 }
 
 async function handleConsulta(
   supabase: ReturnType<typeof createSupabaseServiceClient>,
-  intencao: IntencaoIA,
+  _intencao: IntencaoIA,
   clienteId: string,
-  clinicaId: string
+  _clinicaId: string
 ): Promise<string> {
   const { data: agendamentos } = await supabase
     .from('agendamento')

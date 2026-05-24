@@ -33,7 +33,7 @@ export default async function DashboardLayout({
       <div className="min-h-screen bg-background flex">
         <Sidebar user={user} />
         <div className="flex-1 flex flex-col lg:pl-72">
-          <Header user={user} />
+          <Header />
           <main className="flex-1 p-4 lg:p-8 overflow-auto">
             {children}
           </main>

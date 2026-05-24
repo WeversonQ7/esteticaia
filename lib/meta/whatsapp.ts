@@ -61,7 +61,7 @@ export async function enviarTemplateWhatsApp(
 ): Promise<void> {
   const url = `https://graph.facebook.com/${META_API_VERSION}/${META_PHONE_NUMBER_ID}/messages`;
 
-  const body: Record<string, unknown> = {
+  const body: Record<string, any> = {
     messaging_product: 'whatsapp',
     to: telefone,
     type: 'template',
@@ -126,7 +126,7 @@ export interface MetaWebhookPayload {
           text?: { body: string };
           image?: { caption?: string };
           audio?: {};
-          document?: {};
+          document?: { caption?: string };  // ✅ CORRIGIDO AQUI
           location?: {};
         }>;
         statuses?: Array<{
@@ -157,7 +157,7 @@ export function extrairMensagemMeta(payload: MetaWebhookPayload): {
 
   const conteudo = message.text?.body || 
                    message.image?.caption || 
-                   message.document?.caption || 
+                   message.document?.caption ||   // ✅ AQUI ESTÁ CERTO AGORA
                    '[Áudio/Localização]';
 
   const tipo = message.type === 'text' ? 'texto' :

@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/server/client';
-import { Clock, User, Scissors } from 'lucide-react';
+import { Clock, Scissors } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AgendaHojeProps {

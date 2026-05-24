@@ -1,15 +1,10 @@
 'use client';
 
-import { User } from '@supabase/supabase-js';
-import { Bell, Menu, MessageSquare } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Bell, Menu } from 'lucide-react';
+// import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
-interface HeaderProps {
-  user: User;
-}
-
-export function Header({ user }: HeaderProps) {
+export function Header() {
   const [notificacoes] = useState(3);
 
   return (

@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/server/client';
-import { MessageSquare, Calendar, DollarSign, UserPlus } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 
 interface UltimasAtividadesProps {
   clinicaId: string;

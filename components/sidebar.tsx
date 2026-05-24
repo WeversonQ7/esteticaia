@@ -10,8 +10,6 @@ import {
   BarChart3,
   Settings,
   Building2,
-  LogOut,
-  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
 
+type TomVoz = 'profissional' | 'amigavel' | 'formal';
+
 interface MensagemPreview {
   id: string;
   role: 'user' | 'assistant';
@@ -11,14 +13,24 @@ interface MensagemPreview {
   pensamento?: string;
 }
 
+interface ConfigState {
+  nomeAgente: string;
+  saudacao: string;
+  tomVoz: TomVoz;
+  servicosAutomaticos: boolean;
+  confirmacaoAutomatica: boolean;
+  tempoLembrete: number;
+  instrucoesPersonalizadas: string;
+}
+
 export default function ConfiguracoesPage() {
   const [mensagens, setMensagens] = useState<MensagemPreview[]>([]);
   const [input, setInput] = useState('');
   const [carregando, setCarregando] = useState(false);
-  const [config, setConfig] = useState({
+  const [config, setConfig] = useState<ConfigState>({
     nomeAgente: 'Assistente Virtual',
     saudacao: 'Olá! Sou o assistente virtual da clínica. Como posso ajudar?',
-    tomVoz: 'profissional' as const,
+    tomVoz: 'profissional',
     servicosAutomaticos: true,
     confirmacaoAutomatica: true,
     tempoLembrete: 60,
@@ -130,7 +142,7 @@ export default function ConfiguracoesPage() {
                 <select
                   id="tomVoz"
                   value={config.tomVoz}
-                  onChange={(e) => setConfig({ ...config, tomVoz: e.target.value as 'profissional' | 'amigavel' | 'formal' })}
+                  onChange={(e) => setConfig({ ...config, tomVoz: e.target.value as TomVoz })}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="profissional">Profissional</option>

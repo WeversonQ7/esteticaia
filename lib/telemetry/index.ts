@@ -1,4 +1,4 @@
-import { trace, metrics, context, SpanStatusCode } from '@opentelemetry/api';
+import { trace, metrics, SpanStatusCode } from '@opentelemetry/api';
 import type { TraceContext } from '@/types';
 
 const tracer = trace.getTracer('esteticaia', '1.0.0');
