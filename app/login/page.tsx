@@ -25,7 +25,7 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      window.location.href = '/';
+      window.location.href = '/agenda';
     } catch (err) {
       setErro('Email ou senha inválidos');
     } finally {
