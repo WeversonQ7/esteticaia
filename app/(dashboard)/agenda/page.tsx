@@ -12,7 +12,7 @@ interface Agendamento {
   hora_inicio: string;
   status: string;
   cliente: { nome: string } | null;
-  servico: { nome: string; cor: string; duracao_minutos: number } | null;
+  servico: { nome: string; duracao_minutos: number } | null;
 }
 
 export default function AgendaPage() {
@@ -240,7 +240,7 @@ export default function AgendaPage() {
                 <div key={ag.id} className="p-4 flex items-center gap-4 hover:bg-accent/50 transition-colors">
                   <div className="text-sm font-medium w-14 text-center">{horaAg}</div>
                   <div className="w-1 h-12 rounded-full"
-                    style={{ backgroundColor: ag.servico?.cor || '#7c3aed' }} />
+                    style={{ backgroundColor: '#7c3aed' }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm">{ag.cliente?.nome ?? 'Cliente'}</p>
