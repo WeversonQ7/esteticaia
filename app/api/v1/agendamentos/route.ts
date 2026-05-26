@@ -38,7 +38,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     let query = supabase
       .from('agendamento')
-      .select('*, cliente:cliente_id(nome), servico:servico_id(nome, cor, duracao_minutos)')
+      .select('*, cliente:cliente_id(nome)')
       .order('hora_inicio', { ascending: true });
 
     if (clinicaId) query = query.eq('clinica_id', clinicaId);
