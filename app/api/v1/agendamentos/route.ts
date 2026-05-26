@@ -20,22 +20,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .eq('id', user.id)
       .single();
 
-    let clinicaId = perfil?.clinica_id;
-
-    if (!clinicaId) {
-      clinicaId = user.user_metadata?.clinica_id;
-    }
+    let clinicaId = perfil?.clinica_id ?? user.user_metadata?.clinica_id;
 
     if (!clinicaId) {
       const { data: primeiraClinica } = await supabase
-        .from('clinica')
+        .from('clinicas')
         .select('id')
         .limit(1)
         .single();
       clinicaId = primeiraClinica?.id;
     }
-
-    logger.info('Agendamentos GET', { clinicaId, userId: user.id });
 
     const dataInicio = searchParams.get('dataInicio');
     const dataFim = searchParams.get('dataFim');
@@ -44,12 +38,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     let query = supabase
       .from('agendamento')
-      .select('*')
-      .order('data', { ascending: true });
+      .select('*, cliente:cliente_id(nome), servico:servico_id(nome, cor, duracao_minutos)')
+      .order('hora_inicio', { ascending: true });
 
     if (clinicaId) query = query.eq('clinica_id', clinicaId);
     if (dataInicio) query = query.gte('data', dataInicio);
-    if (dataFim) query = query.lte('data', dataFim);
+    if (dataFim) query = query.lt('data', dataFim);
     if (status) query = query.eq('status', status);
     if (profissionalId) query = query.eq('profissional_id', profissionalId);
 
@@ -79,19 +73,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json();
     const validado = criarAgendamentoSchema.parse(body);
 
+    const dataHoraLocal = validado.dataHora.replace('Z', '');
+    const dataParte = dataHoraLocal.split('T')[0];
+    const horaParte = dataHoraLocal.split('T')[1]?.substring(0, 5) ?? '09:00';
+
     const { data, error } = await supabase
       .from('agendamento')
       .insert({
         clinica_id: validado.clinicaId,
-        unidade_id: validado.unidadeId,
+        unidade_id: validado.unidadeId ?? null,
         cliente_id: validado.clienteId,
-        profissional_id: validado.profissionalId,
         servico_id: validado.servicoId,
-        data: validado.dataHora,
-        hora_inicio: validado.dataHora,
+        data: dataParte,
+        hora_inicio: horaParte,
         duracao_minutos: validado.duracaoMinutos,
-        observacoes: validado.observacoes,
+        observacoes: validado.observacoes ?? null,
         origem: validado.origem,
+        status: 'PENDENTE',
       })
       .select()
       .single();

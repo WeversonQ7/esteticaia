@@ -21,10 +21,11 @@ export default function AgendaPage() {
   const [carregando, setCarregando] = useState(true);
   const [visualizacao, setVisualizacao] = useState<'dia' | 'semana'>('dia');
   const [modalAberto, setModalAberto] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
   const [clienteNome, setClienteNome] = useState('');
   const [hora, setHora] = useState('09:00');
-  const [servico, setServico] = useState('');
+  const [servicoNome, setServicoNome] = useState('');
 
   const diasSemana = Array.from({ length: 7 }, (_, i) => {
     const inicioSemana = startOfWeek(dataSelecionada, { weekStartsOn: 1 });
@@ -40,13 +41,9 @@ export default function AgendaPage() {
     try {
       const dataInicio = format(dataSelecionada, 'yyyy-MM-dd');
       const dataFim = format(addDays(dataSelecionada, 1), 'yyyy-MM-dd');
-
       const response = await fetch(`/api/v1/agendamentos?dataInicio=${dataInicio}&dataFim=${dataFim}`);
       const data = await response.json();
-
-      if (data.success) {
-        setAgendamentos(data.data);
-      }
+      if (data.success) setAgendamentos(data.data);
     } catch (erro) {
       console.error('Erro ao buscar agendamentos:', erro);
     } finally {
@@ -56,99 +53,96 @@ export default function AgendaPage() {
 
   async function criarAgendamento(e: React.FormEvent) {
     e.preventDefault();
-    
+    setSalvando(true);
+
     try {
       const supabase = createSupabaseBrowserClient();
-      
-      // 1. Buscar clinica_id do usuário
       const { data: { user } } = await supabase.auth.getUser();
-      let clinicaId = user?.user_metadata?.clinica_id;
 
-      // Se não tiver nos metadados, buscar do profiles
+      let clinicaId = user?.user_metadata?.clinica_id;
       if (!clinicaId) {
         const { data: perfil } = await supabase
-          .from('profiles')
-          .select('clinica_id')
-          .eq('id', user?.id)
-          .single();
+          .from('profiles').select('clinica_id').eq('id', user?.id).single();
         clinicaId = perfil?.clinica_id;
       }
-
-      // Se ainda não tiver, usar primeira clínica
       if (!clinicaId) {
-        const { data: primeiraClinica } = await supabase
-          .from('clinicas')
-          .select('id')
-          .limit(1)
-          .single();
-        clinicaId = primeiraClinica?.id;
+        const { data: clinica } = await supabase
+          .from('clinicas').select('id').limit(1).single();
+        clinicaId = clinica?.id;
       }
-
       if (!clinicaId) {
-        alert('Erro: Nenhuma clínica encontrada. Cadastre uma clínica primeiro.');
+        alert('Clínica não encontrada.');
         return;
       }
 
-      // 2. Buscar ou criar cliente
-      let { data: clienteData } = await supabase
+      let { data: cliente } = await supabase
         .from('clientes')
         .select('id')
         .ilike('nome', clienteNome)
-        .single();
+        .eq('clinica_id', clinicaId)
+        .maybeSingle();
 
-      if (!clienteData) {
+      if (!cliente) {
         const { data: novoCliente } = await supabase
           .from('clientes')
           .insert({ nome: clienteNome, clinica_id: clinicaId })
           .select('id')
           .single();
-        clienteData = novoCliente;
+        cliente = novoCliente;
       }
 
-      // 3. Buscar ou criar serviço
-      let { data: servicoData } = await supabase
+      let { data: servico } = await supabase
         .from('servicos')
         .select('id, duracao_minutos')
-        .ilike('nome', servico)
-        .single();
+        .ilike('nome', servicoNome)
+        .eq('clinica_id', clinicaId)
+        .maybeSingle();
 
-      if (!servicoData) {
+      if (!servico) {
         const { data: novoServico } = await supabase
           .from('servicos')
-          .insert({ nome: servico, duracao_minutos: 60, clinica_id: clinicaId })
+          .insert({ nome: servicoNome, duracao_minutos: 60, clinica_id: clinicaId })
           .select('id, duracao_minutos')
           .single();
-        servicoData = novoServico;
+        servico = novoServico;
       }
 
-      // 4. Criar agendamento (campos conforme tabela real)
+      if (!cliente?.id || !servico?.id) {
+        alert('Erro ao buscar cliente ou serviço.');
+        return;
+      }
+
+      const dataHora = `${format(dataSelecionada, 'yyyy-MM-dd')}T${hora}:00`;
+
       const response = await fetch('/api/v1/agendamentos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-        clinicaId: clinicaId,
-       clienteId: clienteData?.id,
-       servicoId: servicoData?.id,
-       dataHora: `${format(dataSelecionada, 'yyyy-MM-dd')}T${hora}:00.000Z`,
-       duracaoMinutos: servicoData?.duracao_minutos || 60,
-        observacoes: '',
-       origem: 'manual',   // ← minúsculo, não 'MANUAL'
+          clinicaId,
+          clienteId: cliente.id,
+          servicoId: servico.id,
+          dataHora,
+          duracaoMinutos: servico.duracao_minutos || 60,
+          observacoes: null,
+          origem: 'manual',
         }),
       });
 
+      const result = await response.json();
       if (response.ok) {
         setModalAberto(false);
         setClienteNome('');
-        setServico('');
+        setServicoNome('');
         setHora('09:00');
         buscarAgendamentos();
       } else {
-        const errorData = await response.json();
-        alert(errorData.error?.message || 'Erro ao criar agendamento');
+        alert(result.error?.message || 'Erro ao criar agendamento.');
       }
     } catch (erro) {
       console.error('Erro:', erro);
-      alert('Erro ao criar agendamento');
+      alert('Erro inesperado ao criar agendamento.');
+    } finally {
+      setSalvando(false);
     }
   }
 
@@ -162,30 +156,21 @@ export default function AgendaPage() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
-          <p className="text-muted-foreground">
-            Gerencie os agendamentos da clínica
-          </p>
+          <p className="text-muted-foreground">Gerencie os agendamentos da clínica</p>
         </div>
         <div className="flex gap-2">
           <div className="flex rounded-md border border-input overflow-hidden">
             <button
               onClick={() => setVisualizacao('dia')}
-              className={`px-3 py-2 text-sm font-medium ${
-                visualizacao === 'dia' ? 'bg-primary text-primary-foreground' : 'bg-background'
-              }`}
-            >
+              className={`px-3 py-2 text-sm font-medium ${visualizacao === 'dia' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}>
               Dia
             </button>
             <button
               onClick={() => setVisualizacao('semana')}
-              className={`px-3 py-2 text-sm font-medium ${
-                visualizacao === 'semana' ? 'bg-primary text-primary-foreground' : 'bg-background'
-              }`}
-            >
+              className={`px-3 py-2 text-sm font-medium ${visualizacao === 'semana' ? 'bg-primary text-primary-foreground' : 'bg-background'}`}>
               Semana
             </button>
           </div>
@@ -196,34 +181,29 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* Navegação de Data */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => setDataSelecionada(addDays(dataSelecionada, -1))}
-            className="p-2 rounded-md hover:bg-accent transition-colors"
-          >
-            Anterior
+            className="p-2 rounded-md hover:bg-accent transition-colors">
+            ← Anterior
           </button>
-          <h2 className="text-lg font-semibold min-w-[200px] text-center">
-            {format(dataSelecionada, "EEEE, dd 'de' MMMM")}
+          <h2 className="text-lg font-semibold min-w-[220px] text-center">
+            {format(dataSelecionada, 'dd/MM/yyyy')}
           </h2>
           <button
             onClick={() => setDataSelecionada(addDays(dataSelecionada, 1))}
-            className="p-2 rounded-md hover:bg-accent transition-colors"
-          >
-            Próximo
+            className="p-2 rounded-md hover:bg-accent transition-colors">
+            Próximo →
           </button>
         </div>
         <button
           onClick={() => setDataSelecionada(new Date())}
-          className="text-sm text-primary hover:underline"
-        >
+          className="text-sm text-primary hover:underline">
           Hoje
         </button>
       </div>
 
-      {/* Calendário Semanal */}
       <div className="grid grid-cols-7 gap-2">
         {diasSemana.map((dia) => (
           <button
@@ -233,46 +213,34 @@ export default function AgendaPage() {
               isSameDay(dia, dataSelecionada)
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-card border border-border hover:bg-accent'
-            }`}
-          >
-            <p className="text-xs font-medium uppercase">
-              {format(dia, 'EEE')}
-            </p>
+            }`}>
+            <p className="text-xs font-medium uppercase">{format(dia, 'EEE')}</p>
             <p className="text-lg font-bold mt-1">{format(dia, 'dd')}</p>
           </button>
         ))}
       </div>
 
-      {/* Lista de Agendamentos */}
       <div className="rounded-xl border border-border bg-card shadow-sm">
         <div className="p-4 border-b border-border">
-          <h3 className="font-semibold">
-            {format(dataSelecionada, "EEEE, dd 'de' MMMM")}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {agendamentos.length} agendamentos
-          </p>
+          <h3 className="font-semibold">{format(dataSelecionada, 'dd/MM/yyyy')}</h3>
+          <p className="text-sm text-muted-foreground">{agendamentos.length} agendamentos</p>
         </div>
-
         <div className="divide-y divide-border">
           {carregando ? (
             <div className="p-8 text-center text-muted-foreground">Carregando...</div>
           ) : agendamentos.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
-              <p>Nenhum agendamento para este dia</p>
+              Nenhum agendamento para este dia
             </div>
           ) : (
             agendamentos.map((ag) => {
               const status = statusMap[ag.status] || statusMap.PENDENTE;
-              const hora = ag.hora_inicio ? ag.hora_inicio.slice(0, 5) : '--:--';
-
+              const horaAg = ag.hora_inicio ? ag.hora_inicio.substring(0, 5) : '--:--';
               return (
                 <div key={ag.id} className="p-4 flex items-center gap-4 hover:bg-accent/50 transition-colors">
-                  <div className="text-sm font-medium w-16 text-center">{hora}</div>
-                  <div
-                    className="w-1 h-12 rounded-full"
-                    style={{ backgroundColor: ag.servico?.cor || '#3b82f6' }}
-                  />
+                  <div className="text-sm font-medium w-14 text-center">{horaAg}</div>
+                  <div className="w-1 h-12 rounded-full"
+                    style={{ backgroundColor: ag.servico?.cor || '#7c3aed' }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-sm">{ag.cliente?.nome ?? 'Cliente'}</p>
@@ -280,9 +248,9 @@ export default function AgendaPage() {
                         {status.label}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>{ag.servico?.nome ?? 'Serviço'}</span>
-                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {ag.servico?.nome ?? 'Serviço'}
+                    </p>
                   </div>
                 </div>
               );
@@ -291,7 +259,6 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* Modal Simplificado */}
       {modalAberto && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card rounded-xl border border-border shadow-lg w-full max-w-md mx-4">
@@ -304,38 +271,28 @@ export default function AgendaPage() {
             <form onSubmit={criarAgendamento} className="p-4 space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Cliente *</label>
-                <input
-                  type="text"
-                  value={clienteNome}
-                  onChange={(e) => setClienteNome(e.target.value)}
-                  required
+                <input type="text" value={clienteNome}
+                  onChange={(e) => setClienteNome(e.target.value)} required
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  placeholder="Nome do cliente"
-                />
+                  placeholder="Nome do cliente" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Hora *</label>
-                <input
-                  type="time"
-                  value={hora}
-                  onChange={(e) => setHora(e.target.value)}
-                  required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
+                <input type="time" value={hora}
+                  onChange={(e) => setHora(e.target.value)} required
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Serviço *</label>
-                <input
-                  type="text"
-                  value={servico}
-                  onChange={(e) => setServico(e.target.value)}
-                  required
+                <input type="text" value={servicoNome}
+                  onChange={(e) => setServicoNome(e.target.value)} required
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  placeholder="Nome do serviço"
-                />
+                  placeholder="Nome do serviço" />
               </div>
               <div className="flex gap-2 pt-2">
-                <Button type="submit" className="flex-1">Salvar</Button>
+                <Button type="submit" className="flex-1" disabled={salvando}>
+                  {salvando ? 'Salvando...' : 'Salvar'}
+                </Button>
                 <Button type="button" variant="outline" onClick={() => setModalAberto(false)} className="flex-1">
                   Cancelar
                 </Button>
