@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, ChevronLeft, ChevronRight, Clock, User, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 interface Agendamento {
   id: string;
@@ -18,12 +17,11 @@ interface Agendamento {
 
 export default function AgendaPage() {
   const [dataSelecionada, setDataSelecionada] = useState(new Date());
-  const [agendamentos, setAgendamentos] = useState<<Agendamento[]>([]);
+  const [agendamentos, setAgendamentos] = useState([] as Agendamento[]);
   const [carregando, setCarregando] = useState(true);
   const [visualizacao, setVisualizacao] = useState<'dia' | 'semana'>('dia');
   const [modalAberto, setModalAberto] = useState(false);
 
-  // Estado do formulário
   const [clienteNome, setClienteNome] = useState('');
   const [hora, setHora] = useState('09:00');
   const [servico, setServico] = useState('');
@@ -88,7 +86,7 @@ export default function AgendaPage() {
     }
   }
 
-  const statusMap = {
+  const statusMap: Record<string, { label: string; className: string }> = {
     PENDENTE: { label: 'Pendente', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
     CONFIRMADO: { label: 'Confirmado', className: 'bg-blue-50 text-blue-700 border-blue-200' },
     CONCLUIDO: { label: 'Concluído', className: 'bg-green-50 text-green-700 border-green-200' },
@@ -98,6 +96,7 @@ export default function AgendaPage() {
 
   return (
     <div className="space-y-6">
+      {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
@@ -131,7 +130,101 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* ... resto do código permanece igual ... */}
+      {/* Navegação de Data */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setDataSelecionada(addDays(dataSelecionada, -1))}
+            className="p-2 rounded-md hover:bg-accent transition-colors"
+          >
+            Anterior
+          </button>
+          <h2 className="text-lg font-semibold min-w-[200px] text-center">
+            {format(dataSelecionada, "EEEE, dd 'de' MMMM")}
+          </h2>
+          <button
+            onClick={() => setDataSelecionada(addDays(dataSelecionada, 1))}
+            className="p-2 rounded-md hover:bg-accent transition-colors"
+          >
+            Próximo
+          </button>
+        </div>
+        <button
+          onClick={() => setDataSelecionada(new Date())}
+          className="text-sm text-primary hover:underline"
+        >
+          Hoje
+        </button>
+      </div>
+
+      {/* Calendário Semanal */}
+      <div className="grid grid-cols-7 gap-2">
+        {diasSemana.map((dia) => (
+          <button
+            key={dia.toISOString()}
+            onClick={() => setDataSelecionada(dia)}
+            className={`p-3 rounded-lg text-center transition-colors ${
+              isSameDay(dia, dataSelecionada)
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-card border border-border hover:bg-accent'
+            }`}
+          >
+            <p className="text-xs font-medium uppercase">
+              {format(dia, 'EEE')}
+            </p>
+            <p className="text-lg font-bold mt-1">{format(dia, 'dd')}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* Lista de Agendamentos */}
+      <div className="rounded-xl border border-border bg-card shadow-sm">
+        <div className="p-4 border-b border-border">
+          <h3 className="font-semibold">
+            {format(dataSelecionada, "EEEE, dd 'de' MMMM")}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {agendamentos.length} agendamentos
+          </p>
+        </div>
+
+        <div className="divide-y divide-border">
+          {carregando ? (
+            <div className="p-8 text-center text-muted-foreground">Carregando...</div>
+          ) : agendamentos.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              <p>Nenhum agendamento para este dia</p>
+            </div>
+          ) : (
+            agendamentos.map((ag) => {
+              const status = statusMap[ag.status] || statusMap.PENDENTE;
+              const hora = ag.hora_inicio ? ag.hora_inicio.slice(0, 5) : '--:--';
+
+              return (
+                <div key={ag.id} className="p-4 flex items-center gap-4 hover:bg-accent/50 transition-colors">
+                  <div className="text-sm font-medium w-16 text-center">{hora}</div>
+                  <div
+                    className="w-1 h-12 rounded-full"
+                    style={{ backgroundColor: ag.servico?.cor || '#3b82f6' }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm">{ag.cliente?.nome ?? 'Cliente'}</p>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${status.className}`}>
+                        {status.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                      <span>{ag.servico?.nome ?? 'Serviço'}</span>
+                      <span>{ag.profissional?.nome ?? 'Não atribuído'}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
 
       {/* Modal */}
       {modalAberto && (
@@ -196,20 +289,6 @@ export default function AgendaPage() {
           </div>
         </div>
       )}
-
-      {/* ... resto do código ... */}
     </div>
-  );
-}
-
-function ScissorsIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="6" cy="6" r="3" />
-      <circle cx="6" cy="18" r="3" />
-      <line x1="20" y1="4" x2="8.12" y2="15.88" />
-      <line x1="14.47" y1="14.48" x2="20" y2="20" />
-      <line x1="8.12" y1="8.12" x2="12" y2="12" />
-    </svg>
   );
 }
