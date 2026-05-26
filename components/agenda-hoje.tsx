@@ -14,24 +14,23 @@ export async function AgendaHoje({ clinicaId }: AgendaHojeProps) {
     .from('agendamento')
     .select(`
       id,
-      data_hora,
+      data,
+      hora_inicio,
       status,
       cliente:cliente_id (nome),
-      profissional:profissional_id (nome),
-      servico:servico_id (nome, cor)
+      servico:servico_id (nome)
     `)
     .eq('clinica_id', clinicaId)
-    .gte('data_hora', `${hoje}T00:00:00`)
-    .lte('data_hora', `${hoje}T23:59:59`)
-    .order('data_hora', { ascending: true })
+    .eq('data', hoje)
+    .order('hora_inicio', { ascending: true })
     .limit(10);
 
   const statusMap = {
-    pendente: { label: 'Pendente', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-    confirmado: { label: 'Confirmado', className: 'bg-blue-50 text-blue-700 border-blue-200' },
-    concluido: { label: 'Concluído', className: 'bg-green-50 text-green-700 border-green-200' },
-    cancelado: { label: 'Cancelado', className: 'bg-red-50 text-red-700 border-red-200' },
-    nao_compareceu: { label: 'Não veio', className: 'bg-gray-50 text-gray-700 border-gray-200' },
+    PENDENTE: { label: 'Pendente', className: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+    CONFIRMADO: { label: 'Confirmado', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+    CONCLUIDO: { label: 'Concluído', className: 'bg-green-50 text-green-700 border-green-200' },
+    CANCELADO: { label: 'Cancelado', className: 'bg-red-50 text-red-700 border-red-200' },
+    NAO_COMPARECEU: { label: 'Não veio', className: 'bg-gray-50 text-gray-700 border-gray-200' },
   };
 
   return (
@@ -46,26 +45,23 @@ export async function AgendaHoje({ clinicaId }: AgendaHojeProps) {
       <div className="divide-y divide-border">
         {agendamentos && agendamentos.length > 0 ? (
           agendamentos.map((ag) => {
-            const status = statusMap[ag.status as keyof typeof statusMap] || statusMap.pendente;
-            const hora = new Date(ag.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const status = statusMap[ag.status as keyof typeof statusMap] || statusMap.PENDENTE;
+            const hora = ag.hora_inicio ? ag.hora_inicio.substring(0, 5) : '--:--';
+            const clienteNome = (ag.cliente as unknown as { nome: string })?.nome ?? 'Cliente';
+            const servicoNome = (ag.servico as unknown as { nome: string })?.nome ?? 'Serviço';
 
             return (
               <div key={ag.id} className="p-4 hover:bg-accent/50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div 
-                      className="w-2 h-12 rounded-full"
-                      style={{ backgroundColor: (ag.servico as unknown as { cor: string })?.cor || '#3b82f6' }}
-                    />
+                    <div className="w-2 h-12 rounded-full bg-primary" />
                     <div>
-                      <p className="font-medium text-sm">
-                        {(ag.cliente as unknown as { nome: string })?.nome}
-                      </p>
+                      <p className="font-medium text-sm">{clienteNome}</p>
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         <span>{hora}</span>
                         <span>•</span>
-                        <span>{(ag.servico as unknown as { nome: string })?.nome}</span>
+                        <span>{servicoNome}</span>
                       </div>
                     </div>
                   </div>
