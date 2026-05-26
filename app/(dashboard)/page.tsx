@@ -6,8 +6,28 @@ import { UltimasAtividades } from '@/components/ultimas-atividades';
 
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const clinicaId = session?.user.user_metadata.clinica_id;
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Buscar clinica_id de múltiplas fontes
+  let clinicaId = user?.user_metadata?.clinica_id;
+
+  if (!clinicaId) {
+    const { data: perfil } = await supabase
+      .from('profiles')
+      .select('clinica_id')
+      .eq('id', user?.id)
+      .single();
+    clinicaId = perfil?.clinica_id;
+  }
+
+  if (!clinicaId) {
+    const { data: clinica } = await supabase
+      .from('clinicas')
+      .select('id')
+      .limit(1)
+      .single();
+    clinicaId = clinica?.id;
+  }
 
   const hoje = new Date().toISOString().split('T')[0];
   const inicioDia = `${hoje}T00:00:00`;
@@ -17,8 +37,8 @@ export default async function DashboardPage() {
     .from('agendamento')
     .select('id, status')
     .eq('clinica_id', clinicaId)
-    .gte('data_hora', inicioDia)
-    .lte('data_hora', fimDia);
+    .gte('data', hoje)
+    .lte('data', hoje);
 
   const { data: faturamentoHoje } = await supabase
     .from('caixa')
@@ -29,14 +49,14 @@ export default async function DashboardPage() {
     .lte('created_at', fimDia);
 
   const { data: clientesNovos } = await supabase
-    .from('cliente')
+    .from('clientes')
     .select('id')
     .eq('clinica_id', clinicaId)
     .gte('created_at', inicioDia)
     .lte('created_at', fimDia);
 
   const totalAtendimentos = atendimentosHoje?.length || 0;
-  const atendimentosConcluidos = atendimentosHoje?.filter(a => a.status === 'concluido').length || 0;
+  const atendimentosConcluidos = atendimentosHoje?.filter(a => a.status === 'CONCLUIDO').length || 0;
   const totalFaturamento = faturamentoHoje?.reduce((acc, curr) => acc + (curr.valor || 0), 0) || 0;
   const totalClientesNovos = clientesNovos?.length || 0;
 
