@@ -14,7 +14,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    // Buscar clinica_id do perfil
     const { data: perfil } = await supabase
       .from('profiles')
       .select('clinica_id')
@@ -25,7 +24,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     if (!clinicaId) {
       const { data: primeiraClinica } = await supabase
-        .from('clinica')
+        .from('clinicas')
         .select('id')
         .limit(1)
         .single();
@@ -79,22 +78,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .insert({
         clinica_id: validado.clinicaId,
         usuario_id: validado.usuarioId,
-        agendamento_id: validado.agendamentoId,
+        agendamento_id: validado.agendamentoId ?? null,
         tipo: validado.tipo,
         categoria: validado.categoria,
         valor: validado.valor,
-        descricao: validado.descricao,
+        descricao: validado.descricao ?? null,
+        metodo_pagamento: validado.formaPagamento ?? null,
       })
       .select()
       .single();
 
     if (error) throw error;
-
-    logger.info('Transação de caixa criada', {
-      transacaoId: data.id,
-      tipo: validado.tipo,
-      valor: validado.valor,
-    });
 
     return NextResponse.json({ success: true, data }, { status: 201 });
 
