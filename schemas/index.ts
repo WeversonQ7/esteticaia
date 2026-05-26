@@ -67,7 +67,7 @@ export const criarAgendamentoSchema = z.object({
   clienteId: uuidSchema,
   profissionalId: uuidSchema.optional().nullable(),
   servicoId: uuidSchema,
-  dataHora: z.string().datetime(),
+  dataHora: z.string(),
   duracaoMinutos: z.number().int().min(15).max(480).default(60),
   observacoes: z.string().max(500).optional().nullable(),
   origem: z.enum(['manual', 'whatsapp', 'site', 'app']).default('whatsapp'),
