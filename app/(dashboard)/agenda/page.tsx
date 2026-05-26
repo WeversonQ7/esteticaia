@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface Agendamento {
   id: string;
@@ -59,15 +60,79 @@ export default function AgendaPage() {
     e.preventDefault();
     
     try {
+      const supabase = createSupabaseBrowserClient();
+      
+      // 1. Buscar ou criar cliente
+      let { data: clienteData } = await supabase
+        .from('clientes')
+        .select('id')
+        .ilike('nome', clienteNome)
+        .single();
+
+      if (!clienteData) {
+        const { data: novoCliente } = await supabase
+          .from('clientes')
+          .insert({ nome: clienteNome })
+          .select('id')
+          .single();
+        clienteData = novoCliente;
+      }
+
+      // 2. Buscar ou criar serviço
+      let { data: servicoData } = await supabase
+        .from('servicos')
+        .select('id, duracao_minutos')
+        .ilike('nome', servico)
+        .single();
+
+      if (!servicoData) {
+        const { data: novoServico } = await supabase
+          .from('servicos')
+          .insert({ nome: servico, duracao_minutos: 60 })
+          .select('id, duracao_minutos')
+          .single();
+        servicoData = novoServico;
+      }
+
+      // 3. Buscar ou criar profissional
+      let { data: profissionalData } = await supabase
+        .from('profissionais')
+        .select('id')
+        .ilike('nome', profissional)
+        .single();
+
+      if (!profissionalData && profissional) {
+        const { data: novoProfissional } = await supabase
+          .from('profissionais')
+          .insert({ nome: profissional })
+          .select('id')
+          .single();
+        profissionalData = novoProfissional;
+      }
+
+      // 4. Obter clinica_id
+      const { data: { user } } = await supabase.auth.getUser();
+      const clinicaId = user?.user_metadata?.clinica_id;
+
+      if (!clinicaId) {
+        alert('Erro: clinica_id não encontrado');
+        return;
+      }
+
+      // 5. Criar agendamento
       const response = await fetch('/api/v1/agendamentos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          data: format(dataSelecionada, 'yyyy-MM-dd'),
-          hora_inicio: hora,
-          cliente_nome: clienteNome,
-          servico_nome: servico,
-          profissional_nome: profissional,
+          clinicaId: clinicaId,
+          unidadeId: null,
+          clienteId: clienteData?.id,
+          profissionalId: profissionalData?.id || null,
+          servicoId: servicoData?.id,
+          dataHora: `${format(dataSelecionada, 'yyyy-MM-dd')}T${hora}:00`,
+          duracaoMinutos: servicoData?.duracao_minutos || 60,
+          observacoes: '',
+          origem: 'MANUAL',
         }),
       });
 
@@ -78,7 +143,8 @@ export default function AgendaPage() {
         setProfissional('');
         buscarAgendamentos();
       } else {
-        alert('Erro ao criar agendamento');
+        const errorData = await response.json();
+        alert(errorData.error?.message || 'Erro ao criar agendamento');
       }
     } catch (erro) {
       console.error('Erro:', erro);
@@ -96,7 +162,6 @@ export default function AgendaPage() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
