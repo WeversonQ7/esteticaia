@@ -12,7 +12,6 @@ interface Agendamento {
   hora_inicio: string;
   status: string;
   cliente: { nome: string } | null;
-  profissional: { nome: string } | null;
   servico: { nome: string; cor: string; duracao_minutos: number } | null;
 }
 
@@ -26,7 +25,6 @@ export default function AgendaPage() {
   const [clienteNome, setClienteNome] = useState('');
   const [hora, setHora] = useState('09:00');
   const [servico, setServico] = useState('');
-  const [profissional, setProfissional] = useState('');
 
   const diasSemana = Array.from({ length: 7 }, (_, i) => {
     const inicioSemana = startOfWeek(dataSelecionada, { weekStartsOn: 1 });
@@ -62,7 +60,36 @@ export default function AgendaPage() {
     try {
       const supabase = createSupabaseBrowserClient();
       
-      // 1. Buscar ou criar cliente
+      // 1. Buscar clinica_id do usuário
+      const { data: { user } } = await supabase.auth.getUser();
+      let clinicaId = user?.user_metadata?.clinica_id;
+
+      // Se não tiver nos metadados, buscar do profiles
+      if (!clinicaId) {
+        const { data: perfil } = await supabase
+          .from('profiles')
+          .select('clinica_id')
+          .eq('id', user?.id)
+          .single();
+        clinicaId = perfil?.clinica_id;
+      }
+
+      // Se ainda não tiver, usar primeira clínica
+      if (!clinicaId) {
+        const { data: primeiraClinica } = await supabase
+          .from('clinicas')
+          .select('id')
+          .limit(1)
+          .single();
+        clinicaId = primeiraClinica?.id;
+      }
+
+      if (!clinicaId) {
+        alert('Erro: Nenhuma clínica encontrada. Cadastre uma clínica primeiro.');
+        return;
+      }
+
+      // 2. Buscar ou criar cliente
       let { data: clienteData } = await supabase
         .from('clientes')
         .select('id')
@@ -72,13 +99,13 @@ export default function AgendaPage() {
       if (!clienteData) {
         const { data: novoCliente } = await supabase
           .from('clientes')
-          .insert({ nome: clienteNome })
+          .insert({ nome: clienteNome, clinica_id: clinicaId })
           .select('id')
           .single();
         clienteData = novoCliente;
       }
 
-      // 2. Buscar ou criar serviço
+      // 3. Buscar ou criar serviço
       let { data: servicoData } = await supabase
         .from('servicos')
         .select('id, duracao_minutos')
@@ -88,47 +115,19 @@ export default function AgendaPage() {
       if (!servicoData) {
         const { data: novoServico } = await supabase
           .from('servicos')
-          .insert({ nome: servico, duracao_minutos: 60 })
+          .insert({ nome: servico, duracao_minutos: 60, clinica_id: clinicaId })
           .select('id, duracao_minutos')
           .single();
         servicoData = novoServico;
       }
 
-      // 3. Buscar ou criar profissional
-      let { data: profissionalData } = await supabase
-        .from('profissionais')
-        .select('id')
-        .ilike('nome', profissional)
-        .single();
-
-      if (!profissionalData && profissional) {
-        const { data: novoProfissional } = await supabase
-          .from('profissionais')
-          .insert({ nome: profissional })
-          .select('id')
-          .single();
-        profissionalData = novoProfissional;
-      }
-
-      // 4. Obter clinica_id
-      const { data: { user } } = await supabase.auth.getUser();
-      const clinicaId = user?.user_metadata?.clinica_id;
-
-      if (!clinicaId) {
-        alert('Erro: clinica_id não encontrado');
-        return;
-      }
-
-      // 5. Criar agendamento
+      // 4. Criar agendamento (campos conforme tabela real)
       const response = await fetch('/api/v1/agendamentos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clinicaId: clinicaId,
-          unidadeId: null,
           clienteId: clienteData?.id,
-          profissionalId: profissionalData?.id || null,
-          servicoId: servicoData?.id,
           dataHora: `${format(dataSelecionada, 'yyyy-MM-dd')}T${hora}:00`,
           duracaoMinutos: servicoData?.duracao_minutos || 60,
           observacoes: '',
@@ -140,7 +139,7 @@ export default function AgendaPage() {
         setModalAberto(false);
         setClienteNome('');
         setServico('');
-        setProfissional('');
+        setHora('09:00');
         buscarAgendamentos();
       } else {
         const errorData = await response.json();
@@ -162,6 +161,7 @@ export default function AgendaPage() {
 
   return (
     <div className="space-y-6">
+      {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
@@ -281,7 +281,6 @@ export default function AgendaPage() {
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                       <span>{ag.servico?.nome ?? 'Serviço'}</span>
-                      <span>{ag.profissional?.nome ?? 'Não atribuído'}</span>
                     </div>
                   </div>
                 </div>
@@ -291,7 +290,7 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal Simplificado */}
       {modalAberto && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card rounded-xl border border-border shadow-lg w-full max-w-md mx-4">
@@ -303,7 +302,7 @@ export default function AgendaPage() {
             </div>
             <form onSubmit={criarAgendamento} className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Cliente</label>
+                <label className="block text-sm font-medium mb-1">Cliente *</label>
                 <input
                   type="text"
                   value={clienteNome}
@@ -314,7 +313,7 @@ export default function AgendaPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Hora</label>
+                <label className="block text-sm font-medium mb-1">Hora *</label>
                 <input
                   type="time"
                   value={hora}
@@ -324,7 +323,7 @@ export default function AgendaPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Serviço</label>
+                <label className="block text-sm font-medium mb-1">Serviço *</label>
                 <input
                   type="text"
                   value={servico}
@@ -332,16 +331,6 @@ export default function AgendaPage() {
                   required
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   placeholder="Nome do serviço"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Profissional</label>
-                <input
-                  type="text"
-                  value={profissional}
-                  onChange={(e) => setProfissional(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  placeholder="Nome do profissional"
                 />
               </div>
               <div className="flex gap-2 pt-2">
