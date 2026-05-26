@@ -112,7 +112,7 @@ export default function AgendaPage() {
         return;
       }
 
-      const dataHora = `${format(dataSelecionada, 'yyyy-MM-dd')}T${hora}:00`;
+      const dataHora = `${format(dataSelecionada, 'yyyy-MM-dd')}T${hora}:00.000Z`;
 
       const response = await fetch('/api/v1/agendamentos', {
         method: 'POST',

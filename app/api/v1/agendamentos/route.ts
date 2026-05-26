@@ -73,9 +73,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json();
     const validado = criarAgendamentoSchema.parse(body);
 
-    const dataHoraLocal = validado.dataHora.replace('Z', '');
-    const dataParte = dataHoraLocal.split('T')[0];
-    const horaParte = dataHoraLocal.split('T')[1]?.substring(0, 5) ?? '09:00';
+    const dataParte = validado.dataHora.substring(0, 10);
+    const horaParte = validado.dataHora.substring(11, 16);
 
     const { data, error } = await supabase
       .from('agendamento')
