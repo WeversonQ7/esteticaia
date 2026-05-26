@@ -126,12 +126,13 @@ export default function AgendaPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clinicaId: clinicaId,
-          clienteId: clienteData?.id,
-          dataHora: `${format(dataSelecionada, 'yyyy-MM-dd')}T${hora}:00`,
-          duracaoMinutos: servicoData?.duracao_minutos || 60,
-          observacoes: '',
-          origem: 'MANUAL',
+        clinicaId: clinicaId,
+       clienteId: clienteData?.id,
+       servicoId: servicoData?.id,
+       dataHora: `${format(dataSelecionada, 'yyyy-MM-dd')}T${hora}:00.000Z`,
+       duracaoMinutos: servicoData?.duracao_minutos || 60,
+        observacoes: '',
+       origem: 'manual',   // ← minúsculo, não 'MANUAL'
         }),
       });
 
