@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
             // Define o domínio do cookie para cobrir www e sem www
             const cookieOptions = {
               ...options,
-              domain: '.esteticia.app.br',
+              domain: '.esteticaia.app.br',
             };
             response.cookies.set(name, value, cookieOptions);
           });
