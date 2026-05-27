@@ -25,7 +25,7 @@ export function createSupabaseBrowserClient() {
           document.cookie = cookieString;
         },
         remove(name: string, options: any) {
-          const domain = '.esteticia.app.br';
+          const domain = '.esteticaia.app.br';
           document.cookie = `${name}=; path=${options?.path || '/'}; domain=${domain}; max-age=0`;
         },
       },
