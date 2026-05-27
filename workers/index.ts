@@ -1,4 +1,4 @@
-import { createSupabaseServiceClient } from '@/lib/supabase/client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { redis } from '@/lib/redis/client';
 import { logger, withSpan, mensagensProcessadasCounter, mensagensFalhasCounter } from '@/lib/telemetry';
 import { processarMensagemComIA } from '@/lib/ia/groq';
@@ -32,7 +32,7 @@ async function processarMensagem(
     span.setAttribute('message.id', msg.messageId);
     span.setAttribute('message.telefone', msg.telefone);
 
-    const supabase = createSupabaseServiceClient();
+    const supabase = await createSupabaseServerClient();
 
     try {
       if (msg.rateLimited) {
@@ -158,7 +158,8 @@ async function processarMensagem(
       if (msg.retryCount < CONFIG.MAX_RETRIES) {
         const delay = CONFIG.RETRY_DELAYS[msg.retryCount] || 16000;
         setTimeout(async () => {
-          await supabase.rpc('enqueue_message', {
+          const supabaseRetry = await createSupabaseServerClient();
+          await supabaseRetry.rpc('enqueue_message', {
             queue_name: 'whatsapp-messages',
             payload: { ...msg, retryCount: msg.retryCount + 1 },
           });
@@ -166,7 +167,8 @@ async function processarMensagem(
         return ok(undefined);
       }
 
-      await supabase.from('conversa_log').update({
+      const supabaseError = await createSupabaseServerClient();
+      await supabaseError.from('conversa_log').update({
         processado: true,
         erro: (erro as Error).message,
       }).eq('message_id', msg.messageId);
@@ -177,7 +179,7 @@ async function processarMensagem(
 }
 
 async function handleAgendamento(
-  supabase: ReturnType<typeof createSupabaseServiceClient>,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   intencao: IntencaoIA,
   clienteId: string,
   clinicaId: string,
@@ -245,7 +247,7 @@ async function handleCaixa(
 }
 
 async function handleConsulta(
-  supabase: ReturnType<typeof createSupabaseServiceClient>,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
   _intencao: IntencaoIA,
   clienteId: string,
   _clinicaId: string
@@ -272,7 +274,7 @@ async function handleConsulta(
 }
 
 async function pollQueue(): Promise<void> {
-  const supabase = createSupabaseServiceClient();
+  const supabase = await createSupabaseServerClient();
 
   try {
     const { data: messages, error } = await supabase.rpc('dequeue_messages', {

@@ -26,26 +26,42 @@ export async function middleware(request: NextRequest) {
             },
           });
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
+            // Define o domínio do cookie para cobrir www e sem www
+            const cookieOptions = {
+              ...options,
+              domain: '.esteticia.app.br',
+            };
+            response.cookies.set(name, value, cookieOptions);
           });
         },
       },
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const protectedRoutes = ['/agenda', '/caixa', '/relatorios', '/configuracoes'];
+  const protectedRoutes = [
+    '/dashboard',
+    '/agenda',
+    '/caixa',
+    '/relatorios',
+    '/configuracoes',
+  ];
+
   const isProtected = protectedRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
   );
 
-  if (isProtected && !session) {
+  if (isProtected && !user) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if (session?.user.user_metadata.clinica_id) {
-    response.headers.set('x-clinica-id', session.user.user_metadata.clinica_id);
+  if (user && (request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/login')) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  if (user?.user_metadata?.clinica_id) {
+    response.headers.set('x-clinica-id', user.user_metadata.clinica_id);
   }
 
   return response;
@@ -53,6 +69,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { createSupabaseServiceClient } from '@/lib/supabase/client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/telemetry';
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -22,7 +22,7 @@ export async function criarAssinaturaStripe(
   email: string,
   nome: string
 ): Promise<{ clientSecret: string; subscriptionId: string }> {
-  const supabase = createSupabaseServiceClient();
+  const supabase = await createSupabaseServerClient();
 
   // Buscar ou criar customer
   const { data: clinica } = await supabase
@@ -83,7 +83,7 @@ export async function criarAssinaturaStripe(
 export async function cancelarAssinaturaStripe(subscriptionId: string): Promise<void> {
   await stripe.subscriptions.cancel(subscriptionId);
 
-  const supabase = createSupabaseServiceClient();
+  const supabase = await createSupabaseServerClient();
   await supabase
     .from('assinatura')
     .update({ status: 'cancelada' })
@@ -103,7 +103,7 @@ export async function handleStripeWebhook(payload: string, signature: string): P
   }
 
   const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
-  const supabase = createSupabaseServiceClient();
+  const supabase = await createSupabaseServerClient();
 
   switch (event.type) {
     case 'invoice.payment_succeeded':
