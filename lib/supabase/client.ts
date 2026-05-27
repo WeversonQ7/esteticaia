@@ -14,7 +14,7 @@ export function createSupabaseBrowserClient() {
         },
         set(name: string, value: string, options: any) {
           // Configura o domínio para cobrir www e sem www
-          const domain = '.esteticia.app.br';
+          const domain = '.esteticaia.app.br';
           let cookieString = `${name}=${value}; path=${options?.path || '/'}; domain=${domain}`;
           
           if (options?.maxAge) cookieString += `; max-age=${options.maxAge}`;
