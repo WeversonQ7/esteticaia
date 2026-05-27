@@ -8,7 +8,6 @@ export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Buscar clinica_id de múltiplas fontes
   let clinicaId = user?.user_metadata?.clinica_id;
 
   if (!clinicaId) {
@@ -37,8 +36,7 @@ export default async function DashboardPage() {
     .from('agendamento')
     .select('id, status')
     .eq('clinica_id', clinicaId)
-    .gte('data', hoje)
-    .lte('data', hoje);
+    .eq('data', hoje);
 
   const { data: faturamentoHoje } = await supabase
     .from('caixa')
@@ -102,14 +100,14 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-7">
         <div className="lg:col-span-4">
-          <GraficoFaturamento clinicaId={clinicaId} />
+          {clinicaId && <GraficoFaturamento clinicaId={clinicaId} />}
         </div>
         <div className="lg:col-span-3">
-          <AgendaHoje clinicaId={clinicaId} />
+          {clinicaId && <AgendaHoje clinicaId={clinicaId} />}
         </div>
       </div>
 
-      <UltimasAtividades clinicaId={clinicaId} />
+      {clinicaId && <UltimasAtividades clinicaId={clinicaId} />}
     </div>
   );
 }
