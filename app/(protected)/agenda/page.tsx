@@ -26,6 +26,7 @@ export default function AgendaPage() {
   const [clienteNome, setClienteNome] = useState('');
   const [hora, setHora] = useState('09:00');
   const [servicoNome, setServicoNome] = useState('');
+  const [profissionalNome, setProfissionalNome] = useState('');
 
   const diasSemana = Array.from({ length: 7 }, (_, i) => {
     const inicioSemana = startOfWeek(dataSelecionada, { weekStartsOn: 1 });
@@ -107,6 +108,27 @@ export default function AgendaPage() {
         servico = novoServico;
       }
 
+      // Buscar ou criar profissional
+      let profissionalId = null;
+      if (profissionalNome.trim()) {
+        let { data: profissional } = await supabase
+          .from('profissionals')
+          .select('id')
+          .ilike('nome', profissionalNome)
+          .eq('clinica_id', clinicaId)
+          .maybeSingle();
+
+        if (!profissional) {
+          const { data: novoProfissional } = await supabase
+            .from('profissionals')
+            .insert({ nome: profissionalNome, clinica_id: clinicaId })
+            .select('id')
+            .single();
+          profissional = novoProfissional;
+        }
+        profissionalId = profissional?.id;
+      }
+
       if (!cliente?.id || !servico?.id) {
         alert('Erro ao buscar cliente ou serviço.');
         return;
@@ -121,6 +143,7 @@ export default function AgendaPage() {
           clinicaId,
           clienteId: cliente.id,
           servicoId: servico.id,
+          profissionalId,
           dataHora,
           duracaoMinutos: servico.duracao_minutos || 60,
           observacoes: null,
@@ -134,6 +157,7 @@ export default function AgendaPage() {
         setClienteNome('');
         setServicoNome('');
         setHora('09:00');
+        setProfissionalNome('');
         buscarAgendamentos();
       } else {
         alert(result.error?.message || 'Erro ao criar agendamento.');
@@ -288,6 +312,13 @@ export default function AgendaPage() {
                   onChange={(e) => setServicoNome(e.target.value)} required
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   placeholder="Nome do serviço" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Profissional</label>
+                <input type="text" value={profissionalNome}
+                  onChange={(e) => setProfissionalNome(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  placeholder="Nome do profissional" />
               </div>
               <div className="flex gap-2 pt-2">
                 <Button type="submit" className="flex-1" disabled={salvando}>
