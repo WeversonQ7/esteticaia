@@ -2,7 +2,6 @@ import { logger, withSpan } from '@/lib/telemetry';
 
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || '';
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
-const META_API_VERSION = 'v25.0';
 
 export async function enviarMensagemWhatsApp(
   telefone: string,
@@ -16,7 +15,7 @@ export async function enviarMensagemWhatsApp(
     span.setAttribute('telefone', telefone);
     span.setAttribute('mensagem.tamanho', mensagem.length);
 
-    const url = https://graph.facebook.com///messages;
+    const url = `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
     const body = JSON.stringify({
       messaging_product: 'whatsapp',
@@ -26,12 +25,12 @@ export async function enviarMensagemWhatsApp(
       text: { body: mensagem },
     });
 
-    console.log('Meta API Request:', { url, body, telefone, mensagemLength: mensagem.length });
+    console.log('Meta API Request:', { url, telefone, mensagemLength: mensagem.length });
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': Bearer ,
+        'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
         'Content-Type': 'application/json',
       },
       body,
@@ -40,7 +39,7 @@ export async function enviarMensagemWhatsApp(
     if (!response.ok) {
       const error = await response.json();
       console.error('Meta API Error:', JSON.stringify(error));
-      throw new Error(Meta API error: );
+      throw new Error(`Meta API error: ${JSON.stringify(error)}`);
     }
 
     const data = await response.json();
@@ -62,7 +61,7 @@ export async function enviarTemplateWhatsApp(
     throw new Error('WHATSAPP_TOKEN ou PHONE_NUMBER_ID não configurados');
   }
 
-  const url = https://graph.facebook.com///messages;
+  const url = `https://graph.facebook.com/v25.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
   const body: Record<string, any> = {
     messaging_product: 'whatsapp',
@@ -91,7 +90,7 @@ export async function enviarTemplateWhatsApp(
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': Bearer ,
+      'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -99,26 +98,26 @@ export async function enviarTemplateWhatsApp(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(Meta API template error: );
+    throw new Error(`Meta API template error: ${JSON.stringify(error)}`);
   }
 }
 
 export interface MetaWebhookPayload {
   object: 'whatsapp_business_account';
-  entry: Array<<{
+  entry: Array<{
     id: string;
-    changes: Array<<{
+    changes: Array<{
       value: {
         messaging_product: 'whatsapp';
         metadata: {
           display_phone_number: string;
           phone_number_id: string;
         };
-        contacts?: Array<<{
+        contacts?: Array<{
           wa_id: string;
           profile: { name: string };
         }>;
-        messages?: Array<<{
+        messages?: Array<{
           from: string;
           id: string;
           timestamp: string;
@@ -129,7 +128,7 @@ export interface MetaWebhookPayload {
           document?: { caption?: string };
           location?: {};
         }>;
-        statuses?: Array<<{
+        statuses?: Array<{
           id: string;
           status: 'sent' | 'delivered' | 'read' | 'failed';
           timestamp: string;
@@ -155,8 +154,8 @@ export function extrairMensagemMeta(payload: MetaWebhookPayload): {
 
   if (!message) return null;
 
-  const conteudo = message.text?.body || 
-                   message.image?.caption || 
+  const conteudo = message.text?.body ||
+                   message.image?.caption ||
                    message.document?.caption ||
                    '[Áudio/Localização]';
 
