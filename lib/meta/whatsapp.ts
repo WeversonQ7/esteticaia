@@ -16,7 +16,7 @@ export async function enviarMensagemWhatsApp(
     span.setAttribute('telefone', telefone);
     span.setAttribute('mensagem.tamanho', mensagem.length);
 
-    const url = `https://graph.facebook.com/${META_API_VERSION}/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+    const url = https://graph.facebook.com///messages;
 
     const body = JSON.stringify({
       messaging_product: 'whatsapp',
@@ -31,7 +31,7 @@ export async function enviarMensagemWhatsApp(
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+        'Authorization': Bearer ,
         'Content-Type': 'application/json',
       },
       body,
@@ -40,7 +40,7 @@ export async function enviarMensagemWhatsApp(
     if (!response.ok) {
       const error = await response.json();
       console.error('Meta API Error:', JSON.stringify(error));
-      throw new Error(`Meta API error: ${JSON.stringify(error)}`);
+      throw new Error(Meta API error: );
     }
 
     const data = await response.json();
@@ -62,7 +62,7 @@ export async function enviarTemplateWhatsApp(
     throw new Error('WHATSAPP_TOKEN ou PHONE_NUMBER_ID não configurados');
   }
 
-  const url = `https://graph.facebook.com/${META_API_VERSION}/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  const url = https://graph.facebook.com///messages;
 
   const body: Record<string, any> = {
     messaging_product: 'whatsapp',
@@ -91,7 +91,7 @@ export async function enviarTemplateWhatsApp(
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+      'Authorization': Bearer ,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -99,26 +99,26 @@ export async function enviarTemplateWhatsApp(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(`Meta API template error: ${JSON.stringify(error)}`);
+    throw new Error(Meta API template error: );
   }
 }
 
 export interface MetaWebhookPayload {
   object: 'whatsapp_business_account';
-  entry: Array<{
+  entry: Array<<{
     id: string;
-    changes: Array<{
+    changes: Array<<{
       value: {
         messaging_product: 'whatsapp';
         metadata: {
           display_phone_number: string;
           phone_number_id: string;
         };
-        contacts?: Array<{
+        contacts?: Array<<{
           wa_id: string;
           profile: { name: string };
         }>;
-        messages?: Array<{
+        messages?: Array<<{
           from: string;
           id: string;
           timestamp: string;
@@ -129,7 +129,7 @@ export interface MetaWebhookPayload {
           document?: { caption?: string };
           location?: {};
         }>;
-        statuses?: Array<{
+        statuses?: Array<<{
           id: string;
           status: 'sent' | 'delivered' | 'read' | 'failed';
           timestamp: string;
