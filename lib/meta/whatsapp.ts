@@ -105,20 +105,20 @@ export async function enviarTemplateWhatsApp(
 // ============================================
 export interface MetaWebhookPayload {
   object: 'whatsapp_business_account';
-  entry: Array<<{
+  entry: Array<{
     id: string;
-    changes: Array<<{
+    changes: Array<{
       value: {
         messaging_product: 'whatsapp';
         metadata: {
           display_phone_number: string;
           phone_number_id: string;
         };
-        contacts?: Array<<{
+        contacts?: Array<{
           wa_id: string;
           profile: { name: string };
         }>;
-        messages?: Array<<{
+        messages?: Array<{
           from: string;
           id: string;
           timestamp: string;
@@ -129,7 +129,7 @@ export interface MetaWebhookPayload {
           document?: { caption?: string };
           location?: {};
         }>;
-        statuses?: Array<<{
+        statuses?: Array<{
           id: string;
           status: 'sent' | 'delivered' | 'read' | 'failed';
           timestamp: string;
