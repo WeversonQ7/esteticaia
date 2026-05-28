@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         return new Response('Internal Server Error', { status: 500 });
       }
 
-      const url = `https://graph.facebook.com/v23.0/${phoneNumberId}/messages`;
+      const url = `https://graph.facebook.com/v25.0/${phoneNumberId}/messages`;
       console.log('URL da API:', url);
       
       const response = await fetch(url, {
