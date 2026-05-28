@@ -13,25 +13,40 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  console.log('=== WEBHOOK POST INICIADO ===');
+  
   try {
+    const body = await request.json();
+    console.log('Body recebido:', JSON.stringify(body));
+    
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+    console.log('Mensagem extraída:', JSON.stringify(message));
+    
     if (message?.text?.body) {
       const numeroCliente = message.from;
       const textoRecebido = message.text.body;
-      const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
       
-      if (!phoneNumberId) {
-        console.error('WHATSAPP_PHONE_NUMBER_ID não configurado');
+      console.log('Número cliente:', numeroCliente);
+      console.log('Texto recebido:', textoRecebido);
+      
+      const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+      const token = process.env.WHATSAPP_TOKEN;
+      
+      console.log('PHONE_NUMBER_ID existe:', !!phoneNumberId);
+      console.log('TOKEN existe:', !!token);
+      
+      if (!phoneNumberId || !token) {
+        console.error('Variáveis de ambiente não configuradas');
         return new Response('Internal Server Error', { status: 500 });
       }
 
       const url = `https://graph.facebook.com/v23.0/${phoneNumberId}/messages`;
+      console.log('URL da API:', url);
       
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -42,12 +57,20 @@ export async function POST(request: NextRequest) {
         })
       });
       
-      const result = await response.json();
       console.log('Meta API status:', response.status);
+      const result = await response.json();
       console.log('Meta API response:', JSON.stringify(result));
+      
+      if (!response.ok) {
+        console.error('Meta API erro:', result);
+      }
+    } else {
+      console.log('Nenhuma mensagem de texto encontrada');
     }
   } catch (error) {
-    console.error('Erro ao enviar:', error);
+    console.error('ERRO NO WEBHOOK:', error);
   }
+  
+  console.log('=== WEBHOOK POST FINALIZADO ===');
   return new Response('OK', { status: 200 });
 }
