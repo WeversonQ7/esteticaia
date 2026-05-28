@@ -5,7 +5,6 @@ export async function GET(request: NextRequest) {
   const mode = searchParams.get('hub.mode');
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
-
   if (mode === 'subscribe' && token === 'teste123') {
     return new Response(challenge, { status: 200 });
   } else {
@@ -15,15 +14,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-
   try {
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-
     if (message?.text?.body) {
       const numeroCliente = message.from;
       const textoRecebido = message.text.body;
-
-      await fetch(`https://graph.facebook.com/v23.0/${process.env.PHONE_NUMBER_ID}/messages`, {
+      const response = await fetch("https://graph.facebook.com/v23.0/me/messages", {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`,
@@ -32,13 +28,16 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           messaging_product: 'whatsapp',
           to: numeroCliente,
+          type: 'text',
           text: { body: `Você disse: ${textoRecebido}` }
         })
       });
+      const result = await response.json();
+      console.log('Meta API status:', response.status);
+      console.log('Meta API response:', JSON.stringify(result));
     }
   } catch (error) {
     console.error('Erro ao enviar:', error);
   }
-
   return new Response('OK', { status: 200 });
 }
