@@ -1,11 +1,11 @@
 import { logger, withSpan } from '@/lib/telemetry';
 
-const META_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
-const META_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID;
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const META_API_VERSION = 'v18.0';
 
-if (!META_ACCESS_TOKEN || !META_PHONE_NUMBER_ID) {
-  throw new Error('META_ACCESS_TOKEN ou META_PHONE_NUMBER_ID não configurados');
+if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
+  throw new Error('WHATSAPP_TOKEN ou PHONE_NUMBER_ID não configurados');
 }
 
 // ============================================
@@ -19,12 +19,12 @@ export async function enviarMensagemWhatsApp(
     span.setAttribute('telefone', telefone);
     span.setAttribute('mensagem.tamanho', mensagem.length);
 
-    const url = `https://graph.facebook.com/${META_API_VERSION}/${META_PHONE_NUMBER_ID}/messages`;
+    const url = `https://graph.facebook.com/${META_API_VERSION}/${PHONE_NUMBER_ID}/messages`;
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${META_ACCESS_TOKEN}`,
+        'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -59,7 +59,7 @@ export async function enviarTemplateWhatsApp(
   languageCode: string = 'pt_BR',
   parameters?: Array<{ type: string; parameter_name: string; text: string }>
 ): Promise<void> {
-  const url = `https://graph.facebook.com/${META_API_VERSION}/${META_PHONE_NUMBER_ID}/messages`;
+  const url = `https://graph.facebook.com/${META_API_VERSION}/${PHONE_NUMBER_ID}/messages`;
 
   const body: Record<string, any> = {
     messaging_product: 'whatsapp',
@@ -88,7 +88,7 @@ export async function enviarTemplateWhatsApp(
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${META_ACCESS_TOKEN}`,
+      'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -105,20 +105,20 @@ export async function enviarTemplateWhatsApp(
 // ============================================
 export interface MetaWebhookPayload {
   object: 'whatsapp_business_account';
-  entry: Array<{
+  entry: Array<<{
     id: string;
-    changes: Array<{
+    changes: Array<<{
       value: {
         messaging_product: 'whatsapp';
         metadata: {
           display_phone_number: string;
           phone_number_id: string;
         };
-        contacts?: Array<{
+        contacts?: Array<<{
           wa_id: string;
           profile: { name: string };
         }>;
-        messages?: Array<{
+        messages?: Array<<{
           from: string;
           id: string;
           timestamp: string;
@@ -126,10 +126,10 @@ export interface MetaWebhookPayload {
           text?: { body: string };
           image?: { caption?: string };
           audio?: {};
-          document?: { caption?: string };  // ✅ CORRIGIDO AQUI
+          document?: { caption?: string };
           location?: {};
         }>;
-        statuses?: Array<{
+        statuses?: Array<<{
           id: string;
           status: 'sent' | 'delivered' | 'read' | 'failed';
           timestamp: string;
@@ -157,7 +157,7 @@ export function extrairMensagemMeta(payload: MetaWebhookPayload): {
 
   const conteudo = message.text?.body || 
                    message.image?.caption || 
-                   message.document?.caption ||   // ✅ AQUI ESTÁ CERTO AGORA
+                   message.document?.caption ||
                    '[Áudio/Localização]';
 
   const tipo = message.type === 'text' ? 'texto' :
