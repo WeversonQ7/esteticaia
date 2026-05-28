@@ -19,7 +19,16 @@ export async function POST(request: NextRequest) {
     if (message?.text?.body) {
       const numeroCliente = message.from;
       const textoRecebido = message.text.body;
-      const response = await fetch("https://graph.facebook.com/v23.0/me/messages", {
+      const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+      
+      if (!phoneNumberId) {
+        console.error('WHATSAPP_PHONE_NUMBER_ID não configurado');
+        return new Response('Internal Server Error', { status: 500 });
+      }
+
+      const url = `https://graph.facebook.com/v23.0/${phoneNumberId}/messages`;
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`,
@@ -32,6 +41,7 @@ export async function POST(request: NextRequest) {
           text: { body: `Você disse: ${textoRecebido}` }
         })
       });
+      
       const result = await response.json();
       console.log('Meta API status:', response.status);
       console.log('Meta API response:', JSON.stringify(result));

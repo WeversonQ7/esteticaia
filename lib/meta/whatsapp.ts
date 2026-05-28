@@ -1,12 +1,8 @@
 import { logger, withSpan } from '@/lib/telemetry';
 
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
-const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN || '';
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || '';
 const META_API_VERSION = 'v18.0';
-
-if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
-  throw new Error('WHATSAPP_TOKEN ou PHONE_NUMBER_ID não configurados');
-}
 
 // ============================================
 // ENVIAR MENSAGEM VIA META API
@@ -15,6 +11,10 @@ export async function enviarMensagemWhatsApp(
   telefone: string,
   mensagem: string
 ): Promise<void> {
+  if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
+    throw new Error('WHATSAPP_TOKEN ou PHONE_NUMBER_ID não configurados');
+  }
+
   return withSpan('meta.enviar_mensagem', async (span) => {
     span.setAttribute('telefone', telefone);
     span.setAttribute('mensagem.tamanho', mensagem.length);
@@ -66,6 +66,10 @@ export async function enviarTemplateWhatsApp(
   languageCode: string = 'pt_BR',
   parameters?: Array<{ type: string; parameter_name: string; text: string }>
 ): Promise<void> {
+  if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
+    throw new Error('WHATSAPP_TOKEN ou PHONE_NUMBER_ID não configurados');
+  }
+
   const url = `https://graph.facebook.com/${META_API_VERSION}/${PHONE_NUMBER_ID}/messages`;
 
   const body: Record<string, any> = {
