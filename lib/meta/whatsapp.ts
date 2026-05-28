@@ -21,23 +21,30 @@ export async function enviarMensagemWhatsApp(
 
     const url = `https://graph.facebook.com/${META_API_VERSION}/${PHONE_NUMBER_ID}/messages`;
 
+    const body = JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: telefone,
+      type: 'text',
+      text: { body: mensagem },
+    });
+
+    // LOG para debug
+    console.log('Meta API Request:', { url, body, telefone, mensagemLength: mensagem.length });
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: telefone,
-        type: 'text',
-        text: { body: mensagem },
-      }),
+      body,
     });
 
     if (!response.ok) {
       const error = await response.json();
+      // LOG do erro
+      console.error('Meta API Error:', JSON.stringify(error));
       throw new Error(`Meta API error: ${JSON.stringify(error)}`);
     }
 
@@ -105,20 +112,20 @@ export async function enviarTemplateWhatsApp(
 // ============================================
 export interface MetaWebhookPayload {
   object: 'whatsapp_business_account';
-  entry: Array<{
+  entry: Array<<{
     id: string;
-    changes: Array<{
+    changes: Array<<{
       value: {
         messaging_product: 'whatsapp';
         metadata: {
           display_phone_number: string;
           phone_number_id: string;
         };
-        contacts?: Array<{
+        contacts?: Array<<{
           wa_id: string;
           profile: { name: string };
         }>;
-        messages?: Array<{
+        messages?: Array<<{
           from: string;
           id: string;
           timestamp: string;
@@ -129,7 +136,7 @@ export interface MetaWebhookPayload {
           document?: { caption?: string };
           location?: {};
         }>;
-        statuses?: Array<{
+        statuses?: Array<<{
           id: string;
           status: 'sent' | 'delivered' | 'read' | 'failed';
           timestamp: string;
